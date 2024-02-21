@@ -50,8 +50,8 @@ export default function Page() {
   const [points, setPoints] = useState<Point[]>(defaultPoints);
   const [degrees, setDegrees] = useState<number>(0);
   const [pointToModify, setPointToModify] = useState<number | null>(null);
-  const [width, setWidth] = useState(defaultWidthDimensionValue);
-  const [height, setHeight] = useState(defaultHeightDimensionValue);
+  const [width, setWidth] = useState<string>(defaultWidthDimensionValue);
+  const [height, setHeight] = useState<string>(defaultHeightDimensionValue);
   const [isCalibrating, setIsCalibrating] = useState(true);
   const [perspective, setPerspective] = useState<Matrix>(Matrix.identity(3, 3));
   const [matrix3d, setMatrix3d] = useState<string>("");
@@ -97,11 +97,13 @@ export default function Page() {
   function handleHeightChange(e: ChangeEvent<HTMLInputElement>) {
     const h = removeNonDigits(e.target.value, height);
     setHeight(h);
+    localStorage.setItem("height", h);
   }
 
   function handleWidthChange(e: ChangeEvent<HTMLInputElement>) {
     const w = removeNonDigits(e.target.value, width);
     setWidth(w);
+    localStorage.setItem("width", w);
   }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>): void {
@@ -181,6 +183,18 @@ export default function Page() {
       setPoints(JSON.parse(localPoints));
     } else {
       setPoints(getDefaultPoints());
+    }
+  }, []);
+
+  useEffect(() => {
+    const w = localStorage.getItem("width");
+    if (w !== null) {
+      setWidth(w);
+    }
+
+    const h = localStorage.getItem("height");
+    if (h !== null) {
+      setHeight(h);
     }
   }, []);
 
