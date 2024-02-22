@@ -3,6 +3,7 @@ import React, { Dispatch, SetStateAction, useEffect, useRef } from "react";
 
 import { interp, minIndex, sqrdist, transformPoints } from "@/_lib/geometry";
 import { mouseToCanvasPoint, Point, touchToCanvasPoint } from "@/_lib/point";
+import { toPixels, Unit } from "@/_lib/unit";
 
 const maxPoints = 4; // One point per vertex in rectangle
 
@@ -14,7 +15,8 @@ function draw(
   height: number,
   perspective: Matrix,
   isCalibrating: boolean,
-  pointToModify: number | null
+  pointToModify: number | null,
+  unit: Unit
 ): void {
   ctx.translate(offset.x, offset.y);
 
@@ -37,7 +39,7 @@ function draw(
   ctx.strokeStyle = "#fff";
   ctx.beginPath();
   if (isCalibrating) {
-    drawGrid(ctx, width, height, perspective, 2);
+    drawGrid(ctx, width, height, perspective, 2, unit);
     const v = 1;
     ctx.strokeStyle = "#000";
     ctx.setLineDash([v * 3, v]);
@@ -45,7 +47,7 @@ function draw(
     ctx.setLineDash([]);
     ctx.strokeStyle = "#fff";
     ctx.beginPath();
-    drawGrid(ctx, width, height, perspective, 0);
+    drawGrid(ctx, width, height, perspective, 0, unit);
     ctx.stroke();
 
     if (pointToModify !== null) {
@@ -62,7 +64,7 @@ function draw(
       ctx.stroke();
     }
   } else {
-    drawGrid(ctx, width, height, perspective, 8);
+    drawGrid(ctx, width, height, perspective, 8, unit);
     const v = 1;
     ctx.setLineDash([1]);
     ctx.strokeStyle = "#000000";
@@ -72,7 +74,7 @@ function draw(
     ctx.setLineDash([]);
 
     ctx.beginPath();
-    drawGrid(ctx, width, height, perspective, 0);
+    drawGrid(ctx, width, height, perspective, 0, unit);
     const t = 1;
     ctx.strokeStyle = "#aaaaaa88";
     ctx.setLineDash([t * 3, t]);
@@ -86,14 +88,14 @@ function drawGrid(
   width: number,
   height: number,
   perspective: Matrix,
-  outset: number
+  outset: number,
+  unit: Unit
 ): void {
   for (let i = 1; i < width; i++) {
-    // TODO: fix needing dpi added in here.
     const line = transformPoints(
       [
-        { x: i * 96, y: -outset * 96 },
-        { x: i * 96, y: (height + outset) * 96 },
+        { x: toPixels(i, unit), y: toPixels(-outset, unit) },
+        { x: toPixels(i, unit), y: toPixels(height + outset, unit) },
       ],
       perspective
     );
@@ -102,8 +104,8 @@ function drawGrid(
   for (let i = 1; i < height; i++) {
     const line = transformPoints(
       [
-        { x: -outset * 96, y: i * 96 },
-        { x: (width + outset) * 96, y: i * 96 },
+        { x: toPixels(-outset, unit), y: toPixels(i, unit) },
+        { x: toPixels(width + outset, unit), y: toPixels(i, unit) },
       ],
       perspective
     );
@@ -142,6 +144,7 @@ export default function CalibrationCanvas({
   width,
   height,
   isCalibrating,
+  unit,
 }: {
   className: string | undefined;
   canvasOffset: Point;
@@ -153,6 +156,7 @@ export default function CalibrationCanvas({
   width: number;
   height: number;
   isCalibrating: boolean;
+  unit: Unit;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   useEffect(() => {
@@ -170,7 +174,8 @@ export default function CalibrationCanvas({
           height,
           perspective,
           isCalibrating,
-          pointToModify
+          pointToModify,
+          unit
         );
       }
     }
@@ -182,6 +187,7 @@ export default function CalibrationCanvas({
     height,
     isCalibrating,
     pointToModify,
+    unit,
   ]);
 
   function handleDown(newPoint: Point) {

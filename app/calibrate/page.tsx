@@ -10,6 +10,7 @@ import Draggable from "@/_components/draggable";
 import FileInput from "@/_components/file-input";
 import FullScreenButton from "@/_components/full-screen-button";
 import LabelledInput from "@/_components/labelled-input";
+import LabelledRadioInput from "@/_components/labelled-radio-input";
 import PDFViewer from "@/_components/pdf-viewer";
 import ArrowBackIcon from "@/_icons/arrow-back-icon";
 import ArrowForwardIcon from "@/_icons/arrow-forward-icon";
@@ -31,6 +32,7 @@ import {
 import isValidPDF from "@/_lib/is-valid-pdf";
 import { Point } from "@/_lib/point";
 import removeNonDigits from "@/_lib/remove-non-digits";
+import { toPixels, Unit } from "@/_lib/unit";
 
 const defaultPoints = [
   // Points that fit on an iPhone SE
@@ -39,6 +41,7 @@ const defaultPoints = [
   { x: 300, y: 600 },
   { x: 100, y: 600 },
 ];
+const centimetersPerInch = 2.54;
 
 export default function Page() {
   const defaultWidthDimensionValue = "24";
@@ -70,6 +73,7 @@ export default function Page() {
   const [canvasOffset, setCanvasOffset] = useState<Point>({ x: 0, y: 0 });
   const [pageCount, setPageCount] = useState<number>(1);
   const [pageNumber, setPageNumber] = useState(1);
+  const [unit, setUnit] = useState<Unit>(Unit.Inches);
 
   function visible(b: boolean): string {
     return b ? "visible" : "hidden";
@@ -126,13 +130,28 @@ export default function Page() {
   }
 
   function handlePreviousPage() {
-    console.log(`previous page`);
     changePage(-1);
   }
 
   function handleNextPage() {
-    console.log(`next page`);
     changePage(1);
+  }
+
+  function handleUnitChange() {
+    const newUnit = unit == Unit.Inches ? Unit.Centimeters : Unit.Inches;
+    const factor =
+      newUnit == Unit.Centimeters
+        ? centimetersPerInch
+        : 1.0 / centimetersPerInch;
+    const newWidth = (+width * factor).toFixed(3);
+    const newHeight = (+height * factor).toFixed(3);
+
+    setUnit(newUnit);
+    setWidth(newWidth);
+    setHeight(newHeight);
+    localStorage.setItem("unit", newUnit);
+    localStorage.setItem("width", newWidth);
+    localStorage.setItem("height", newHeight);
   }
 
   // EFFECTS
@@ -191,10 +210,13 @@ export default function Page() {
     if (w !== null) {
       setWidth(w);
     }
-
     const h = localStorage.getItem("height");
     if (h !== null) {
       setHeight(h);
+    }
+    const u = localStorage.getItem("unit");
+    if (u !== null) {
+      setUnit(u as Unit);
     }
   }, []);
 
@@ -213,11 +235,10 @@ export default function Page() {
     }
 
     function getDstVertices(): Point[] {
-      const ppi = 96; // defined by css.
       const ox = 0;
       const oy = 0;
-      const mx = +width * ppi + ox;
-      const my = +height * ppi + oy;
+      const mx = toPixels(+width, unit) + ox;
+      const my = toPixels(+height, unit) + oy;
 
       const dstVertices = [
         { x: ox, y: oy },
@@ -228,7 +249,7 @@ export default function Page() {
 
       return dstVertices;
     }
-  }, [points, width, height]);
+  }, [points, width, height, unit]);
 
   return (
     <main
@@ -340,6 +361,26 @@ export default function Page() {
                 <ArrowForwardIcon />
               </button>
             </div>
+            <fieldset
+              className={`bg-white rounded-full ${visible(isCalibrating)}`}
+            >
+              <LabelledRadioInput
+                handleChange={handleUnitChange}
+                checked={unit != Unit.Centimeters}
+                id={Unit.Inches}
+                inputTestId="inches"
+                label="in"
+                name="unit"
+              />
+              <LabelledRadioInput
+                handleChange={handleUnitChange}
+                id={Unit.Centimeters}
+                checked={unit == Unit.Centimeters}
+                inputTestId="centimeters"
+                label="cm"
+                name="unit"
+              />
+            </fieldset>
             <LabelledInput
               className={`${visible(
                 isCalibrating
@@ -347,7 +388,7 @@ export default function Page() {
               handleChange={handleWidthChange}
               id="width"
               inputTestId="width"
-              label="Width (in)"
+              label="Width"
               name="width"
               value={width}
             />
@@ -358,7 +399,7 @@ export default function Page() {
               handleChange={handleHeightChange}
               id="height"
               inputTestId="height"
-              label="Height (in)"
+              label="Height"
               name="height"
               value={height}
             />
@@ -389,6 +430,7 @@ export default function Page() {
           width={+width}
           height={+height}
           isCalibrating={isCalibrating}
+          unit={unit}
         />
         <Draggable
           className={`cursor-grabbing select-none ${visible(!isCalibrating)}`}
